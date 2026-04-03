@@ -922,7 +922,7 @@ def meal_plan_html(user_name: str, week_label: str, plan: dict, daily_budget: in
     <p style="font-size:14px;color:#6B7280;margin:0 0 20px;">Here's your personalized meal plan for <strong style="color:#FF6B35;">{week_label}</strong>.</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">{rows if rows else '<tr><td style="color:#9CA3AF;font-size:13px;padding:12px 0;">No meals planned yet for this week.</td></tr>'}</table>
     <div style="text-align:center;margin:24px 0;">
-      <a href="https://wellness-plate-order.preview.emergentagent.com/meal-planner" style="background:#FF6B35;color:white;text-decoration:none;padding:12px 32px;border-radius:24px;font-weight:700;font-size:14px;display:inline-block;">View Full Planner</a>
+      <a href="https://nutri-smart-eat-smart-live-better.vercel.app/meal-planner" style="background:#FF6B35;color:white;text-decoration:none;padding:12px 32px;border-radius:24px;font-weight:700;font-size:14px;display:inline-block;">View Full Planner</a>
     </div>
     <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">NutriSmart – Eat Smart, Live Better</p>
   </div>
@@ -1002,7 +1002,7 @@ def weekly_report_html(user_name: str, week_label: str, plan: dict, orders: list
     </table>
 
     <div style="text-align:center;margin:24px 0;">
-      <a href="https://wellness-plate-order.preview.emergentagent.com/meal-planner" style="background:#FF6B35;color:white;text-decoration:none;padding:12px 32px;border-radius:24px;font-weight:700;font-size:14px;display:inline-block;">Plan Next Week</a>
+      <a href="https://nutri-smart-eat-smart-live-better.vercel.app/meal-planner" style="background:#FF6B35;color:white;text-decoration:none;padding:12px 32px;border-radius:24px;font-weight:700;font-size:14px;display:inline-block;">Plan Next Week</a>
     </div>
     <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">NutriSmart – Eat Smart, Live Better • Sent every Sunday</p>
   </div>

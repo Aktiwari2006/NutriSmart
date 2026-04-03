@@ -8,7 +8,7 @@ Build a full-stack, production-ready web application called "NutriSmart" — a s
 - **Backend**: FastAPI (Python) + Motor (async MongoDB driver)
 - **Database**: MongoDB
 - **Auth**: JWT (httpOnly cookies)
-- **AI**: OpenAI GPT via emergentintegrations (Emergent LLM Key)
+- **AI**: Rule-based system for nutrition algorithms
 - **Payment**: Mock/Demo payment only
 
 ## User Choices
@@ -25,7 +25,7 @@ Build a full-stack, production-ready web application called "NutriSmart" — a s
 - BCrypt password hashing
 - BMI calculation API with category assignment
 - Menu CRUD with seed data (20 items)
-- AI recommendations via OpenAI GPT-4.1-mini (emergentintegrations)
+- AI recommendations via rule-based logic
 - Order placement & retrieval
 - Mock payment endpoint
 - Admin panel APIs (menu CRUD, orders, stats)
