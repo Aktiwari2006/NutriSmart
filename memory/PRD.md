@@ -63,6 +63,7 @@ See /app/memory/test_credentials.md
 - [x] Mock payment
 - [x] Admin panel
 - [x] User dashboard
+- [x] Meal Planner (weekly, daily budget, calorie tracking, persist to DB)
 
 ### P1 (Next Phase)
 - [ ] Password reset via email (Resend integration)
