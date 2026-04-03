@@ -557,7 +557,7 @@ async def register(data: RegisterRequest):
     user_id = str(result.inserted_id)
     token = create_access_token(user_id, email, "user")
     resp = JSONResponse(content={"id": user_id, "email": email, "name": data.name, "role": "user", "bmi_data": None})
-    resp.set_cookie("access_token", token, httponly=True, secure=False, samesite="lax", max_age=86400, path="/")
+    resp.set_cookie("access_token", token, httponly=True, secure=True, samesite="none", max_age=86400, path="/")
     return resp
 
 @api_router.post("/auth/login")
@@ -576,7 +576,7 @@ async def login(data: LoginRequest):
         "role": user.get("role", "user"),
         "bmi_data": user.get("bmi_data"),
     })
-    resp.set_cookie("access_token", token, httponly=True, secure=False, samesite="lax", max_age=86400, path="/")
+    resp.set_cookie("access_token", token, httponly=True, secure=True, samesite="none", max_age=86400, path="/")
     return resp
 
 @api_router.post("/auth/logout")
