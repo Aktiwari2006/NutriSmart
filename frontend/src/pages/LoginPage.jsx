@@ -25,7 +25,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login(email, password);
-      if (!user.bmi_data) navigate("/bmi-setup");
+      if (user.role === "admin") navigate("/admin");
+      else if (!user.bmi_data) navigate("/bmi-setup");
       else navigate("/menu");
     } catch (err) {
       setError(formatError(err.response?.data?.detail) || err.message);
