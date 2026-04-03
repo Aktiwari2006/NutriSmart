@@ -16,8 +16,9 @@ import uuid
 import asyncio
 import resend
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import resend
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -516,8 +517,8 @@ async def seed_database():
 
     # Write test credentials
     import os as _os
-    _os.makedirs("/app/memory", exist_ok=True)
-    with open("/app/memory/test_credentials.md", "w") as f:
+    _os.makedirs("memory", exist_ok=True)
+    with open("memory/test_credentials.md", "w") as f:
         f.write(f"""# NutriSmart Test Credentials
 
 ## Admin Account
@@ -674,22 +675,13 @@ async def get_recommendations(request: Request):
     recs = [i for i in all_items if i["category"] == target_cats[0]][:4]
     recs += [i for i in all_items if i["category"] == target_cats[1]][:2]
 
-    # AI tip via LLM
-    ai_tip = None
-    try:
-        chat = LlmChat(
-            api_key=os.environ.get("EMERGENT_LLM_KEY", ""),
-            session_id=f"rec-{user['_id']}-{uuid.uuid4()}",
-            system_message="You are a certified nutritionist. Give a concise, personalized, actionable dietary tip in 2 sentences max. Be warm and motivating."
-        ).with_model("openai", "gpt-4.1-mini")
-
-        msg = UserMessage(
-            text=f"User BMI: {bmi} ({category}), Goal: {goal}. Give a personalized nutrition tip for their restaurant ordering today."
-        )
-        ai_tip = await chat.send_message(msg)
-    except Exception as e:
-        logger.warning(f"AI tip failed: {e}")
-        ai_tip = f"Based on your BMI of {bmi} ({category}), focus on {'calorie-dense, protein-rich meals' if category == 'underweight' else 'light, nutrient-dense options' if category == 'overweight' else 'balanced meals with adequate protein and fiber'}."
+    # AI tip via simple logic
+    if category == "underweight":
+        ai_tip = "Focus on calorie-dense, protein-rich meals like nuts, avocados, and grilled chicken. Don't skip meals!"
+    elif category == "overweight":
+        ai_tip = "Try starting with a salad or soup to feel fuller. Focus on high-fiber vegetables and lean protein."
+    else:
+        ai_tip = "Maintain your energy with balanced portions of lean protein, healthy fats, and complex carbohydrates."
 
     return {
         "recommendations": recs[:6],
