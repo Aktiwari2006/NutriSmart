@@ -16,8 +16,6 @@ import uuid
 import asyncio
 import resend
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import resend
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 logging.basicConfig(level=logging.INFO)
