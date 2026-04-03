@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Activity, ShoppingBag, Flame, Target, Clock, CheckCircle, ChevronRight, Edit } from "lucide-react";
+import { Activity, ShoppingBag, Flame, Target, Clock, CheckCircle, ChevronRight, Edit, Mail, X, Info } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL + "/api";
 
@@ -27,6 +27,9 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reportSending, setReportSending] = useState(false);
+  const [reportMsg, setReportMsg] = useState("");
+  const [emailPreview, setEmailPreview] = useState(null);
 
   useEffect(() => {
     axios.get(`${API}/orders`, { withCredentials: true })
@@ -34,6 +37,25 @@ export default function DashboardPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const sendWeeklyReport = async () => {
+    setReportSending(true);
+    setReportMsg("");
+    try {
+      const { data } = await axios.post(`${API}/email/weekly-report`, {}, { withCredentials: true });
+      if (data.sent) {
+        setReportMsg("Report sent to your email!");
+        setTimeout(() => setReportMsg(""), 6000);
+      } else {
+        setEmailPreview({ html: data.preview_html, week_label: data.week_label, type: "report" });
+      }
+    } catch (err) {
+      setReportMsg(err.response?.data?.detail || "Failed to send report");
+      setTimeout(() => setReportMsg(""), 6000);
+    } finally {
+      setReportSending(false);
+    }
+  };
 
   const bmi = user?.bmi_data;
   const totalCalories = orders.slice(0, 7).reduce((s, o) => s + (o.items?.reduce((a, i) => a + (i.calories * i.quantity), 0) || 0), 0);
@@ -49,20 +71,38 @@ export default function DashboardPage() {
     <div className="bg-gray-50 min-h-screen pb-12" style={{ fontFamily: "Manrope, sans-serif" }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-black text-gray-900" style={{ fontFamily: "Outfit, sans-serif" }}>
               Hello, {user?.name?.split(" ")[0]}!
             </h1>
             <p className="text-gray-500">Here's your health & order summary</p>
           </div>
-          <button
-            data-testid="edit-bmi-btn"
-            onClick={() => navigate("/bmi-setup")}
-            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 font-medium px-4 py-2 rounded-full hover:bg-gray-50 transition-colors text-sm"
-          >
-            <Edit size={14} /> Update Profile
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              data-testid="email-weekly-report-btn"
+              onClick={sendWeeklyReport}
+              disabled={reportSending}
+              className="flex items-center gap-2 bg-[#FF6B35] hover:bg-[#E85D2A] text-white font-medium px-4 py-2 rounded-full transition-colors text-sm disabled:opacity-60"
+            >
+              {reportSending
+                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Mail size={14} />}
+              Email Weekly Report
+            </button>
+            <button
+              data-testid="edit-bmi-btn"
+              onClick={() => navigate("/bmi-setup")}
+              className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 font-medium px-4 py-2 rounded-full hover:bg-gray-50 transition-colors text-sm"
+            >
+              <Edit size={14} /> Update Profile
+            </button>
+          </div>
+          {reportMsg && (
+            <div className={`w-full text-sm px-4 py-2 rounded-2xl ${reportMsg.includes("sent") ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-600 border border-red-200"}`} data-testid="report-msg">
+              {reportMsg}
+            </div>
+          )}
         </div>
 
         {/* Stats Grid */}
@@ -216,6 +256,39 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Email Preview Modal */}
+      {emailPreview && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" data-testid="dashboard-email-preview">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <Mail size={18} className="text-[#FF6B35]" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-gray-900 text-sm" style={{ fontFamily: "Outfit, sans-serif" }}>
+                    Weekly Nutrition Report Preview
+                  </h2>
+                  <p className="text-xs text-gray-400">{emailPreview.week_label} · auto-sent every Sunday 8 AM IST</p>
+                </div>
+              </div>
+              <button onClick={() => setEmailPreview(null)} className="p-2 rounded-full hover:bg-gray-100" data-testid="close-report-preview">
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2">
+              <Info size={13} className="text-amber-600 flex-shrink-0" />
+              <p className="text-xs text-amber-700">
+                <strong>Demo mode:</strong> With a verified domain on Resend, this sends to every user's inbox automatically on Sunday mornings.
+              </p>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <iframe srcDoc={emailPreview.html} title="Report Preview" className="w-full border-0" style={{ minHeight: "560px" }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

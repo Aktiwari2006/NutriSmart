@@ -5,7 +5,7 @@ import { useCart } from "../contexts/CartContext";
 import axios from "axios";
 import {
   ChevronLeft, ChevronRight, Plus, X, Flame, ShoppingCart,
-  Sparkles, Info, Calendar, Target
+  Sparkles, Info, Calendar, Target, Copy, Mail, CheckCircle
 } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL + "/api";
@@ -73,6 +73,11 @@ export default function MealPlannerPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [loading, setLoading] = useState(true);
+  const [copying, setCopying] = useState(false);
+  const [emailing, setEmailing] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [emailPreview, setEmailPreview] = useState(null); // { html, week_label }
 
   const weekKey = toISODate(weekStart);
 
@@ -170,6 +175,50 @@ export default function MealPlannerPage() {
 
   const goToThisWeek = () => setWeekStart(getWeekStart());
 
+  const copyFromLastWeek = async () => {
+    setCopying(true);
+    try {
+      const lastWeekDate = new Date(weekStart);
+      lastWeekDate.setDate(lastWeekDate.getDate() - 7);
+      const lastWeekKey = toISODate(lastWeekDate);
+      const { data } = await axios.get(`${API}/meal-plan?week_start=${lastWeekKey}`, { withCredentials: true });
+      const lastPlan = data.plan || {};
+      if (Object.keys(lastPlan).length === 0) {
+        setSaveMsg("No plan found for last week.");
+        setTimeout(() => setSaveMsg(""), 3000);
+        return;
+      }
+      setPlan(lastPlan);
+      await savePlan(lastPlan);
+      setSaveMsg("Copied from last week!");
+      setTimeout(() => setSaveMsg(""), 3000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const sendMealPlanEmail = async () => {
+    setEmailing(true);
+    setEmailError("");
+    try {
+      const { data } = await axios.post(`${API}/email/meal-plan-digest`, { week_start: weekKey }, { withCredentials: true });
+      if (data.sent) {
+        setEmailSent(true);
+        setTimeout(() => setEmailSent(false), 5000);
+      } else {
+        // Show preview modal
+        setEmailPreview({ html: data.preview_html, week_label: data.week_label, type: "plan" });
+      }
+    } catch (err) {
+      setEmailError(err.response?.data?.detail || "Failed to generate email");
+      setTimeout(() => setEmailError(""), 5000);
+    } finally {
+      setEmailing(false);
+    }
+  };
+
   const orderTodaysPlan = () => {
     const items = plan[activeDay] || [];
     if (items.length === 0) return;
@@ -240,6 +289,44 @@ export default function MealPlannerPage() {
 
             {saving && <span className="text-xs text-gray-400">Saving...</span>}
             {saveMsg && <span className="text-xs text-green-600 font-semibold">{saveMsg}</span>}
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                data-testid="copy-last-week-btn"
+                onClick={copyFromLastWeek}
+                disabled={copying}
+                title="Copy meals from last week into this week"
+                className="flex items-center gap-1.5 bg-white border border-gray-200 hover:border-[#FF6B35] hover:text-[#FF6B35] text-gray-600 font-medium text-xs px-3 py-2 rounded-full transition-all disabled:opacity-50"
+              >
+                {copying
+                  ? <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  : <Copy size={13} />}
+                Copy from Last Week
+              </button>
+
+              <button
+                data-testid="email-plan-btn"
+                onClick={sendMealPlanEmail}
+                disabled={emailing || emailSent}
+                title="Email this week's meal plan to yourself"
+                className={`flex items-center gap-1.5 font-medium text-xs px-3 py-2 rounded-full transition-all disabled:opacity-50 ${
+                  emailSent
+                    ? "bg-green-50 border border-green-300 text-green-700"
+                    : "bg-[#FF6B35] hover:bg-[#E85D2A] text-white"
+                }`}
+              >
+                {emailing
+                  ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : emailSent
+                  ? <><CheckCircle size={13} /> Sent!</>
+                  : <><Mail size={13} /> Email Me This Plan</>}
+              </button>
+            </div>
+
+            {emailError && (
+              <span className="text-xs text-red-500 w-full text-right">{emailError}</span>
+            )}
           </div>
         </div>
       </div>
@@ -524,6 +611,47 @@ export default function MealPlannerPage() {
               {filteredMenu.length === 0 && (
                 <div className="text-center py-8 text-gray-400 text-sm">No items found for "{modalSearch}"</div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Preview Modal */}
+      {emailPreview && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" data-testid="email-preview-modal">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-orange-100 rounded-xl flex items-center justify-center">
+                  <Mail size={18} className="text-[#FF6B35]" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-gray-900 text-sm" style={{ fontFamily: "Outfit, sans-serif" }}>
+                    Email Preview – {emailPreview.week_label}
+                  </h2>
+                  <p className="text-xs text-gray-400">
+                    {emailPreview.type === "plan" ? "Meal plan digest" : "Weekly nutrition report"} · Demo preview
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setEmailPreview(null)} className="p-2 rounded-full hover:bg-gray-100" data-testid="close-email-preview">
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2.5 flex items-center gap-2">
+              <Info size={13} className="text-amber-600 flex-shrink-0" />
+              <p className="text-xs text-amber-700">
+                <strong>Demo mode:</strong> Verifying a domain on Resend will send this directly to users' inboxes. The scheduler auto-sends every Sunday at 8 AM IST.
+              </p>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <iframe
+                data-testid="email-preview-frame"
+                srcDoc={emailPreview.html}
+                title="Email Preview"
+                className="w-full border-0"
+                style={{ minHeight: "520px" }}
+              />
             </div>
           </div>
         </div>

@@ -13,6 +13,10 @@ import bcrypt
 import jwt
 import logging
 import uuid
+import asyncio
+import resend
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 logging.basicConfig(level=logging.INFO)
@@ -864,6 +868,263 @@ async def admin_get_menu(request: Request):
         result.append(item)
     return result
 
+# ── RESEND SETUP ─────────────────────────────────────────────────────────────
+resend.api_key = os.environ.get("RESEND_API_KEY", "")
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+
+async def send_email(to: str, subject: str, html: str) -> dict:
+    params = {"from": SENDER_EMAIL, "to": [to], "subject": subject, "html": html}
+    try:
+        result = await asyncio.to_thread(resend.Emails.send, params)
+        return {"success": True, "id": result.get("id", "")}
+    except Exception as e:
+        logger.error(f"Email send failed to {to}: {e}")
+        return {"success": False, "error": str(e)}
+
+# ── EMAIL TEMPLATES ───────────────────────────────────────────────────────────
+def meal_plan_html(user_name: str, week_label: str, plan: dict, daily_budget: int) -> str:
+    DAYS_ORDERED = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+    DAY_LABELS = {"monday":"Monday","tuesday":"Tuesday","wednesday":"Wednesday",
+                  "thursday":"Thursday","friday":"Friday","saturday":"Saturday","sunday":"Sunday"}
+
+    rows = ""
+    for day in DAYS_ORDERED:
+        items = plan.get(day, [])
+        if not items:
+            continue
+        day_cal = sum(i.get("calories", 0) for i in items)
+        budget_pct = min(int((day_cal / daily_budget) * 100), 100)
+        bar_color = "#EF4444" if day_cal > daily_budget else "#F59E0B" if budget_pct > 80 else "#10B981"
+        meal_rows = "".join(
+            f'<tr><td style="padding:4px 0;font-size:13px;color:#374151;">{i["name"]}</td>'
+            f'<td style="padding:4px 8px;font-size:13px;color:#6B7280;text-align:right;">{i.get("calories",0)} kcal</td>'
+            f'<td style="padding:4px 0;font-size:13px;color:#FF6B35;text-align:right;">₹{i.get("price",0)}</td></tr>'
+            for i in items
+        )
+        rows += f"""
+        <tr>
+          <td colspan="3" style="padding:12px 0 4px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-weight:700;font-size:14px;color:#111827;">{DAY_LABELS[day]}</span>
+              <span style="font-size:12px;color:{bar_color};font-weight:600;">{day_cal} / {daily_budget} kcal</span>
+            </div>
+            <div style="background:#F3F4F6;border-radius:4px;height:6px;overflow:hidden;">
+              <div style="background:{bar_color};height:6px;width:{budget_pct}%;border-radius:4px;"></div>
+            </div>
+          </td>
+        </tr>
+        <tr><td colspan="3"><table width="100%" cellpadding="0" cellspacing="0">{meal_rows}</table></td></tr>
+        <tr><td colspan="3" style="border-bottom:1px solid #F3F4F6;padding-bottom:4px;"></td></tr>
+        """
+
+    return f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#F9FAFB;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+  <div style="background:#FF6B35;border-radius:16px 16px 0 0;padding:28px 24px;text-align:center;">
+    <div style="display:inline-block;background:rgba(255,255,255,0.2);border-radius:10px;padding:6px 14px;margin-bottom:10px;">
+      <span style="color:white;font-weight:900;font-size:18px;">NS</span>
+    </div>
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:900;">NutriSmart</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">Your Meal Plan is Ready</p>
+  </div>
+  <div style="background:white;border-radius:0 0 16px 16px;padding:28px 24px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+    <p style="font-size:15px;color:#374151;margin:0 0 4px;">Hi <strong>{user_name}</strong>,</p>
+    <p style="font-size:14px;color:#6B7280;margin:0 0 20px;">Here's your personalized meal plan for <strong style="color:#FF6B35;">{week_label}</strong>.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">{rows if rows else '<tr><td style="color:#9CA3AF;font-size:13px;padding:12px 0;">No meals planned yet for this week.</td></tr>'}</table>
+    <div style="text-align:center;margin:24px 0;">
+      <a href="https://wellness-plate-order.preview.emergentagent.com/meal-planner" style="background:#FF6B35;color:white;text-decoration:none;padding:12px 32px;border-radius:24px;font-weight:700;font-size:14px;display:inline-block;">View Full Planner</a>
+    </div>
+    <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">NutriSmart – Eat Smart, Live Better</p>
+  </div>
+</div>
+</body></html>"""
+
+def weekly_report_html(user_name: str, week_label: str, plan: dict, orders: list, daily_budget: int, bmi_data: Optional[dict]) -> str:
+    DAYS_ORDERED = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+    planned_cal = sum(sum(i.get("calories",0) for i in (plan.get(d) or [])) for d in DAYS_ORDERED)
+    actual_cal = sum(sum(item.get("calories",0)*item.get("quantity",1) for item in (o.get("items") or [])) for o in orders)
+    planned_spend = sum(sum(i.get("price",0) for i in (plan.get(d) or [])) for d in DAYS_ORDERED)
+    actual_spend = sum(o.get("total_amount", 0) for o in orders if o.get("payment_status") == "paid")
+
+    bmi_row = ""
+    if bmi_data:
+        bmi_color = "#3B82F6" if bmi_data["category"]=="underweight" else "#10B981" if bmi_data["category"]=="normal" else "#F59E0B"
+        bmi_row = f'<tr><td style="padding:6px 0;font-size:13px;color:#374151;">Your BMI</td><td style="padding:6px 0;font-size:13px;font-weight:700;color:{bmi_color};text-align:right;">{bmi_data.get("bmi")} ({bmi_data.get("category","").title()})</td></tr>'
+
+    adherence = int((actual_cal / planned_cal * 100)) if planned_cal > 0 else 0
+    adherence_color = "#10B981" if adherence >= 80 else "#F59E0B" if adherence >= 50 else "#EF4444"
+    adherence_msg = "Great job following your plan!" if adherence >= 80 else "You followed your plan partially." if adherence >= 50 else "Try to stick closer to your plan next week."
+
+    return f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:#F9FAFB;font-family:Arial,sans-serif;">
+<div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+  <div style="background:linear-gradient(135deg,#FF6B35,#E85D2A);border-radius:16px 16px 0 0;padding:28px 24px;text-align:center;">
+    <h1 style="color:white;margin:0;font-size:22px;font-weight:900;">Weekly Nutrition Report</h1>
+    <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;font-size:13px;">{week_label}</p>
+  </div>
+  <div style="background:white;border-radius:0 0 16px 16px;padding:28px 24px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+    <p style="font-size:15px;color:#374151;margin:0 0 20px;">Hi <strong>{user_name}</strong>, here's your health summary for last week.</p>
+
+    <!-- Stats Grid -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        <td width="48%" style="background:#FFF7ED;border-radius:12px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:#FF6B35;">{planned_cal:,}</div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">kcal Planned</div>
+        </td>
+        <td width="4%"></td>
+        <td width="48%" style="background:#F0FDF4;border-radius:12px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:#10B981;">{actual_cal:,}</div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">kcal Ordered</div>
+        </td>
+      </tr>
+      <tr><td colspan="3" style="padding:8px 0;"></td></tr>
+      <tr>
+        <td width="48%" style="background:#EFF6FF;border-radius:12px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:#3B82F6;">₹{int(planned_spend)}</div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Planned Spend</div>
+        </td>
+        <td width="4%"></td>
+        <td width="48%" style="background:#F5F3FF;border-radius:12px;padding:16px;text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:#7C3AED;">₹{int(actual_spend)}</div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Actually Spent</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Adherence -->
+    <div style="background:#F9FAFB;border-radius:12px;padding:16px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:700;color:#374151;">Plan Adherence</span>
+        <span style="font-size:14px;font-weight:900;color:{adherence_color};">{adherence}%</span>
+      </div>
+      <div style="background:#E5E7EB;border-radius:4px;height:8px;overflow:hidden;">
+        <div style="background:{adherence_color};height:8px;width:{min(adherence,100)}%;border-radius:4px;"></div>
+      </div>
+      <p style="font-size:12px;color:#6B7280;margin:8px 0 0;">{adherence_msg}</p>
+    </div>
+
+    <!-- Health Details -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+      {bmi_row}
+      <tr><td style="padding:6px 0;font-size:13px;color:#374151;">Daily Calorie Budget</td><td style="padding:6px 0;font-size:13px;font-weight:700;color:#374151;text-align:right;">{daily_budget} kcal</td></tr>
+      <tr><td style="padding:6px 0;font-size:13px;color:#374151;">Orders This Week</td><td style="padding:6px 0;font-size:13px;font-weight:700;color:#374151;text-align:right;">{len(orders)}</td></tr>
+    </table>
+
+    <div style="text-align:center;margin:24px 0;">
+      <a href="https://wellness-plate-order.preview.emergentagent.com/meal-planner" style="background:#FF6B35;color:white;text-decoration:none;padding:12px 32px;border-radius:24px;font-weight:700;font-size:14px;display:inline-block;">Plan Next Week</a>
+    </div>
+    <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">NutriSmart – Eat Smart, Live Better • Sent every Sunday</p>
+  </div>
+</div>
+</body></html>"""
+
+# ── EMAIL ENDPOINTS ───────────────────────────────────────────────────────────
+class EmailMealPlanRequest(BaseModel):
+    week_start: str
+
+@api_router.post("/email/meal-plan-digest")
+async def email_meal_plan(data: EmailMealPlanRequest, request: Request):
+    user = await get_current_user(request)
+    plan_doc = await db.meal_plans.find_one({"user_id": user["_id"], "week_start": data.week_start})
+    plan = plan_doc.get("plan", {}) if plan_doc else {}
+    daily_budget = plan_doc.get("daily_budget", 1800) if plan_doc else 1800
+
+    try:
+        ws = datetime.strptime(data.week_start, "%Y-%m-%d")
+        we = ws + timedelta(days=6)
+        week_label = f"{ws.strftime('%d %b')} – {we.strftime('%d %b %Y')}"
+    except Exception:
+        week_label = data.week_start
+
+    html = meal_plan_html(user["name"], week_label, plan, daily_budget)
+    result = await send_email(user["email"], f"Your NutriSmart Meal Plan: {week_label}", html)
+
+    if not result["success"]:
+        # Return preview HTML so frontend can display it even if email fails
+        return {"sent": False, "preview_html": html, "week_label": week_label,
+                "reason": "Email sending restricted in test mode — showing preview instead."}
+    return {"sent": True, "message": "Meal plan email sent!", "email_id": result.get("id")}
+
+@api_router.post("/email/weekly-report")
+async def email_weekly_report(request: Request):
+    user = await get_current_user(request)
+    today = datetime.now(timezone.utc)
+    days_since_monday = today.weekday()
+    last_week_start = (today - timedelta(days=days_since_monday + 7)).strftime("%Y-%m-%d")
+    last_week_end = today - timedelta(days=days_since_monday + 1)
+
+    plan_doc = await db.meal_plans.find_one({"user_id": user["_id"], "week_start": last_week_start})
+    plan = plan_doc.get("plan", {}) if plan_doc else {}
+    daily_budget = plan_doc.get("daily_budget", 1800) if plan_doc else 1800
+
+    week_start_dt = datetime.strptime(last_week_start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    orders = await db.orders.find({
+        "user_id": user["_id"],
+        "created_at": {"$gte": week_start_dt, "$lte": last_week_end}
+    }).to_list(50)
+
+    try:
+        ws = datetime.strptime(last_week_start, "%Y-%m-%d")
+        week_label = f"{ws.strftime('%d %b')} – {last_week_end.strftime('%d %b %Y')}"
+    except Exception:
+        week_label = f"Week of {last_week_start}"
+
+    html = weekly_report_html(user["name"], week_label, plan, orders, daily_budget, user.get("bmi_data"))
+    result = await send_email(user["email"], f"Your NutriSmart Weekly Nutrition Report – {week_label}", html)
+
+    if not result["success"]:
+        return {"sent": False, "preview_html": html, "week_label": week_label,
+                "reason": "Email sending restricted in test mode — showing preview instead."}
+    return {"sent": True, "message": "Weekly report sent!", "email_id": result.get("id")}
+
+# ── SCHEDULED WEEKLY REPORTS ──────────────────────────────────────────────────
+async def scheduled_weekly_reports():
+    """Runs every Sunday 2:30 AM UTC — sends weekly nutrition reports to all users."""
+    logger.info("Running scheduled weekly nutrition reports...")
+    today = datetime.now(timezone.utc)
+    days_since_monday = today.weekday()
+    last_week_start = (today - timedelta(days=days_since_monday + 7)).strftime("%Y-%m-%d")
+    last_week_end = today - timedelta(days=days_since_monday + 1)
+
+    try:
+        ws = datetime.strptime(last_week_start, "%Y-%m-%d")
+        week_label = f"{ws.strftime('%d %b')} – {last_week_end.strftime('%d %b %Y')}"
+    except Exception:
+        week_label = f"Week of {last_week_start}"
+
+    # Get all users with a role of "user"
+    users = await db.users.find({"role": "user"}).to_list(1000)
+    sent = 0
+    for user_doc in users:
+        try:
+            user_id = str(user_doc["_id"])
+            plan_doc = await db.meal_plans.find_one({"user_id": user_id, "week_start": last_week_start})
+            plan = plan_doc.get("plan", {}) if plan_doc else {}
+            daily_budget = plan_doc.get("daily_budget", 1800) if plan_doc else 1800
+
+            week_start_dt = datetime.strptime(last_week_start, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            orders = await db.orders.find({
+                "user_id": user_id,
+                "created_at": {"$gte": week_start_dt, "$lte": last_week_end}
+            }).to_list(50)
+
+            html = weekly_report_html(
+                user_doc.get("name", "User"), week_label, plan, orders,
+                daily_budget, user_doc.get("bmi_data")
+            )
+            result = await send_email(
+                user_doc["email"],
+                f"Your NutriSmart Weekly Nutrition Report – {week_label}",
+                html
+            )
+            if result["success"]:
+                sent += 1
+        except Exception as e:
+            logger.error(f"Failed report for user {user_doc.get('email')}: {e}")
+
+    logger.info(f"Weekly reports: {sent}/{len(users)} sent successfully")
+
 # ── HEALTH CHECK ──────────────────────────────────────────────────────────────
 @api_router.get("/")
 async def health():
@@ -877,4 +1138,13 @@ async def startup():
     await db.users.create_index("email", unique=True)
     await db.menu_items.create_index("category")
     await seed_database()
+    # Start email scheduler
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        scheduled_weekly_reports,
+        CronTrigger(day_of_week="sun", hour=2, minute=30, timezone="UTC"),
+        id="weekly_report",
+        replace_existing=True,
+    )
+    scheduler.start()
     logger.info("NutriSmart API started")
