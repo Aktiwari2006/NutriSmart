@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
-import { ShoppingCart, Menu, X, User, LogOut, LayoutDashboard, ChefHat } from "lucide-react";
+import { ShoppingCart, Menu, X, User, LogOut, LayoutDashboard, ChefHat, Calendar } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -36,6 +36,7 @@ export default function Navbar() {
           {user && (
             <div className="hidden md:flex items-center gap-6">
               <Link to="/menu" className={`font-medium transition-colors text-sm ${isActive("/menu") ? "text-[#FF6B35]" : "text-gray-600 hover:text-[#FF6B35]"}`} data-testid="nav-menu">Menu</Link>
+              <Link to="/meal-planner" className={`font-medium transition-colors text-sm ${isActive("/meal-planner") ? "text-[#FF6B35]" : "text-gray-600 hover:text-[#FF6B35]"}`} data-testid="nav-meal-planner">Meal Planner</Link>
               <Link to="/dashboard" className={`font-medium transition-colors text-sm ${isActive("/dashboard") ? "text-[#FF6B35]" : "text-gray-600 hover:text-[#FF6B35]"}`} data-testid="nav-dashboard">Dashboard</Link>
               {user.role === "admin" && (
                 <Link to="/admin" className={`font-medium transition-colors text-sm ${isActive("/admin") ? "text-[#FF6B35]" : "text-gray-600 hover:text-[#FF6B35]"}`} data-testid="nav-admin">Admin</Link>
@@ -84,6 +85,9 @@ export default function Navbar() {
           <div className="md:hidden py-4 border-t border-gray-100 flex flex-col gap-2">
             <Link to="/menu" className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2" onClick={() => setMenuOpen(false)}>
               <ChefHat size={16} /> Menu
+            </Link>
+            <Link to="/meal-planner" className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+              <Calendar size={16} /> Meal Planner
             </Link>
             <Link to="/dashboard" className="px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2" onClick={() => setMenuOpen(false)}>
               <LayoutDashboard size={16} /> Dashboard

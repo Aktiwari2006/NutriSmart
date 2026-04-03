@@ -155,6 +155,21 @@ class MockPaymentRequest(BaseModel):
     order_id: str
     amount: float
 
+class MealPlanItem(BaseModel):
+    item_id: str
+    name: str
+    image_url: str
+    price: float
+    calories: int
+    protein: float
+    carbs: float
+    fat: float
+
+class MealPlanSave(BaseModel):
+    week_start: str  # "YYYY-MM-DD" (Monday)
+    daily_budget: int = 1800
+    plan: dict  # {"monday": [MealPlanItem dicts], ...}
+
 # ── Seed Data ─────────────────────────────────────────────────────────────────
 SEED_MENU_ITEMS = [
     # Low Calorie (Green)
@@ -743,6 +758,43 @@ async def mock_payment(data: MockPaymentRequest, request: Request):
         "message": "Payment successful! Your order is confirmed.",
         "order_id": data.order_id,
     }
+
+# ── MEAL PLAN ROUTES ──────────────────────────────────────────────────────────
+@api_router.get("/meal-plan")
+async def get_meal_plan(request: Request, week_start: Optional[str] = None):
+    user = await get_current_user(request)
+    query = {"user_id": user["_id"]}
+    if week_start:
+        query["week_start"] = week_start
+        plan = await db.meal_plans.find_one(query)
+    else:
+        plan = await db.meal_plans.find_one(query, sort=[("updated_at", -1)])
+    if not plan:
+        return {"week_start": week_start or "", "daily_budget": 1800, "plan": {}}
+    plan["id"] = str(plan["_id"])
+    plan.pop("_id", None)
+    for k in ("created_at", "updated_at"):
+        if isinstance(plan.get(k), datetime):
+            plan[k] = plan[k].isoformat()
+    return plan
+
+@api_router.put("/meal-plan")
+async def save_meal_plan(data: MealPlanSave, request: Request):
+    user = await get_current_user(request)
+    existing = await db.meal_plans.find_one({"user_id": user["_id"], "week_start": data.week_start})
+    doc = {
+        "user_id": user["_id"],
+        "week_start": data.week_start,
+        "daily_budget": data.daily_budget,
+        "plan": data.plan,
+        "updated_at": datetime.now(timezone.utc),
+    }
+    if existing:
+        await db.meal_plans.update_one({"_id": existing["_id"]}, {"$set": doc})
+    else:
+        doc["created_at"] = datetime.now(timezone.utc)
+        await db.meal_plans.insert_one(doc)
+    return {"message": "Plan saved", "week_start": data.week_start}
 
 # ── ADMIN ROUTES ──────────────────────────────────────────────────────────────
 @api_router.post("/admin/menu")

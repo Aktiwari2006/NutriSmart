@@ -14,6 +14,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 import DashboardPage from "./pages/DashboardPage";
 import AdminPage from "./pages/AdminPage";
+import MealPlannerPage from "./pages/MealPlannerPage";
 import "./App.css";
 
 function Layout({ children, showNav = true }) {
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/checkout" element={<ProtectedRoute><Layout><CheckoutPage /></Layout></ProtectedRoute>} />
             <Route path="/order-confirmation/:orderId" element={<ProtectedRoute><Layout><OrderConfirmationPage /></Layout></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Layout><DashboardPage /></Layout></ProtectedRoute>} />
+            <Route path="/meal-planner" element={<ProtectedRoute><Layout><MealPlannerPage /></Layout></ProtectedRoute>} />
 
             {/* Admin */}
             <Route path="/admin" element={<AdminRoute><Layout><AdminPage /></Layout></AdminRoute>} />
