@@ -33,7 +33,7 @@ api_router = APIRouter(prefix="/api")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        os.environ.get("FRONTEND_URL", "http://localhost:3000"),
+        os.environ.get("FRONTEND_URL", "http://localhost:3000").rstrip("/"),
         "http://localhost:3000",
     ],
     allow_origin_regex=r"^https://.*\.vercel\.app$",
