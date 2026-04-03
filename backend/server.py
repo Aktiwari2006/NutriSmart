@@ -466,22 +466,30 @@ DEMO_ORDERS = [
 
 async def seed_database():
     """Seed admin, demo user, and menu items."""
-    # Seed Admin
+    # 1. ALWAYS Ensure Admin User
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@nutrismart.com")
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
     admin = await db.users.find_one({"email": admin_email})
+    
+    admin_doc = {
+        "email": admin_email,
+        "password_hash": hash_password(admin_password),
+        "name": "NutriSmart Admin",
+        "role": "admin",
+        "bmi_data": None,
+        "created_at": datetime.now(timezone.utc),
+    }
+
     if not admin:
-        await db.users.insert_one({
-            "email": admin_email,
-            "password_hash": hash_password(admin_password),
-            "name": "NutriSmart Admin",
-            "role": "admin",
-            "bmi_data": None,
-            "created_at": datetime.now(timezone.utc),
-        })
+        await db.users.insert_one(admin_doc)
         logger.info("Admin user seeded")
-    elif not verify_password(admin_password, admin.get("password_hash", "")):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
+    else:
+        # Update existing user to ensure they are admin and password matches
+        await db.users.update_one(
+            {"email": admin_email}, 
+            {"$set": {"role": "admin", "password_hash": hash_password(admin_password)}}
+        )
+        logger.info("Admin user verified/updated")
 
     # Seed Demo User
     demo_email = os.environ.get("DEMO_EMAIL", "demo@nutrismart.com")
