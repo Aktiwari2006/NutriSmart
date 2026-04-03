@@ -1,0 +1,149 @@
+{
+  "theme": "light",
+  "archetype": "1_organic_and_earthy",
+  "design_philosophy": "Fresh, clean, and functional. Blends the vibrant, appetite-stimulating aesthetics of a modern food delivery app (Zomato/Swiggy) with the clinical trust and clarity of a health and fitness platform. Strictly light theme with airy, floating components, ample whitespace, and strict color-coding for nutritional guidance.",
+  "colors": {
+    "background": {
+      "default": "#FFFFFF",
+      "secondary": "#F9FAFB",
+      "muted": "#F3F4F6"
+    },
+    "text": {
+      "primary": "#111827",
+      "secondary": "#4B5563",
+      "muted": "#9CA3AF"
+    },
+    "brand": {
+      "primary": "#FF6B35",
+      "primary_hover": "#E85D2A",
+      "primary_foreground": "#FFFFFF"
+    },
+    "nutritional_status": {
+      "healthy": {
+        "bg": "#DEF7EC",
+        "text": "#03543F",
+        "badge": "#10B981"
+      },
+      "moderate": {
+        "bg": "#FEF3C7",
+        "text": "#92400E",
+        "badge": "#F59E0B"
+      },
+      "high_calorie": {
+        "bg": "#FDE8E8",
+        "text": "#9B1C1C",
+        "badge": "#EF4444"
+      }
+    },
+    "surfaces": {
+      "card": "#FFFFFF",
+      "border": "#E5E7EB"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Outfit, sans-serif",
+      "body": "Manrope, sans-serif"
+    },
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-gray-900",
+      "h2": "text-3xl sm:text-4xl font-bold tracking-tight text-gray-900",
+      "h3": "text-xl sm:text-2xl font-semibold tracking-tight text-gray-900",
+      "h4": "text-lg sm:text-xl font-medium text-gray-900",
+      "body": "text-base font-normal leading-relaxed text-gray-600",
+      "small": "text-sm font-medium text-gray-500",
+      "overline": "text-xs font-bold uppercase tracking-[0.2em] text-gray-500"
+    }
+  },
+  "layout_and_spacing": {
+    "container_padding": "px-6 md:px-12 lg:px-24",
+    "section_gap": "py-16 md:py-24",
+    "card_padding": "p-6 md:p-8",
+    "border_radius": {
+      "small": "rounded-lg",
+      "medium": "rounded-2xl",
+      "large": "rounded-3xl",
+      "full": "rounded-full"
+    },
+    "grid_systems": {
+      "dashboard_bento": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+      "menu_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8"
+    }
+  },
+  "components": {
+    "food_cards": {
+      "style": "Flat background (#FFFFFF), rounded-3xl, 1px subtle border (#E5E7EB), overflow-hidden",
+      "hover_state": "-translate-y-1 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] border-transparent transition-all duration-300",
+      "image": "h-48 w-full object-cover",
+      "tags": "Pill-shaped badges for calories and macros, positioned over the image or just below it."
+    },
+    "buttons": {
+      "primary": "bg-[#FF6B35] text-white hover:bg-[#E85D2A] rounded-full px-8 py-3 font-semibold transition-all active:scale-95",
+      "secondary": "bg-white text-gray-900 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-full px-8 py-3 font-semibold transition-all active:scale-95",
+      "ghost": "text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all"
+    },
+    "health_indicators": {
+      "green": "Use for low calorie / high protein (e.g., < 400 kcal)",
+      "yellow": "Use for moderate balanced meals (e.g., 400 - 700 kcal)",
+      "red": "Use for high calorie meals / cheat meals (e.g., > 700 kcal)",
+      "implementation": "Small colored dot next to the item name, or a tinted background badge."
+    },
+    "navigation": {
+      "style": "Sticky glassmorphism header: backdrop-blur-xl bg-white/80 border-b border-gray-100 z-50",
+      "links": "text-gray-600 hover:text-[#FF6B35] font-medium transition-colors"
+    }
+  },
+  "media": {
+    "icons_library": "lucide-react",
+    "images": {
+      "hero_background": {
+        "url": "https://images.pexels.com/photos/3756512/pexels-photo-3756512.jpeg",
+        "description": "Woman enjoying healthy breakfast indoors. Overlay with a subtle white-to-transparent gradient to ensure text readability."
+      },
+      "food_items": [
+        {
+          "name": "Superfood Salad Bowl",
+          "url": "https://images.unsplash.com/photo-1649067907464-174b77a64a9e",
+          "category": "Green"
+        },
+        {
+          "name": "Grilled Chicken Quinoa",
+          "url": "https://images.unsplash.com/photo-1762631383846-6bead15b9796",
+          "category": "Green"
+        },
+        {
+          "name": "Avocado & Egg Toast",
+          "url": "https://images.unsplash.com/photo-1541519227354-08fa5d50c44d",
+          "category": "Yellow"
+        },
+        {
+          "name": "Salmon Poke Bowl",
+          "url": "https://images.unsplash.com/photo-1467003909585-2f8a72700288",
+          "category": "Green"
+        },
+        {
+          "name": "Berry Antioxidant Smoothie",
+          "url": "https://images.unsplash.com/photo-1553530666-ba11a7da3888",
+          "category": "Green"
+        },
+        {
+          "name": "Double Cheese Burger",
+          "url": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd",
+          "category": "Red"
+        }
+      ]
+    }
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure all text meets APCA/WCAG AA standards against pure white. Do not use light gray text on white backgrounds.",
+    "testing_attributes": "All interactive elements MUST include data-testid. Examples: data-testid='add-to-cart-button', data-testid='login-submit', data-testid='filter-vegan'"
+  },
+  "instructions_to_main_agent": [
+    "Use Manrope and Outfit fonts from Google Fonts.",
+    "Construct standard Shadcn UI components but heavily override them: add 'rounded-2xl' or 'rounded-3xl' for cards, strip harsh borders, and use soft shadows.",
+    "Strictly adhere to the light theme. DO NOT use dark mode toggles or dark backgrounds.",
+    "Implement the 'Health Indicators' color coding dynamically based on the nutritional properties of the food items.",
+    "For the BMI setup, use large, friendly inputs (Shadcn customized) and clear iconography.",
+    "The admin dashboard should use a dense 'Bento' grid, but remain entirely in light mode with high-contrast data visualization."
+  ]
+}
