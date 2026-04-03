@@ -64,6 +64,10 @@ See /app/memory/test_credentials.md
 - [x] Admin panel
 - [x] User dashboard
 - [x] Meal Planner (weekly, daily budget, calorie tracking, persist to DB)
+- [x] Copy from Last Week button in Meal Planner
+- [x] Email Me This Plan (Resend digest with branded HTML, iframe preview in demo mode)
+- [x] Email Weekly Report button in Dashboard (planned vs actual, adherence score)
+- [x] APScheduler: auto-sends weekly reports every Sunday 8 AM IST (2:30 AM UTC) to all users
 
 ### P1 (Next Phase)
 - [ ] Password reset via email (Resend integration)
