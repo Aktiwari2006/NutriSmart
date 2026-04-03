@@ -35,8 +35,8 @@ app.add_middleware(
     allow_origins=[
         os.environ.get("FRONTEND_URL", "http://localhost:3000"),
         "http://localhost:3000",
-        "https://wellness-plate-order.preview.emergentagent.com",
     ],
+    allow_origin_regex="https://nutri-smart-eat-smart-live-.*\\.vercel\\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
