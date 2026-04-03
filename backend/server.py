@@ -515,8 +515,8 @@ async def seed_database():
 
     # Write test credentials
     import os as _os
-    _os.makedirs("/app/memory", exist_ok=True)
-    with open("/app/memory/test_credentials.md", "w") as f:
+    _os.makedirs("memory", exist_ok=True)
+    with open("memory/test_credentials.md", "w") as f:
         f.write(f"""# NutriSmart Test Credentials
 
 ## Admin Account
