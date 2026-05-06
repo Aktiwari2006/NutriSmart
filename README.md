@@ -2,6 +2,8 @@
 
 NutriSmart is a premium full-stack platform that bridges the gap between restaurant ordering and personal health goals. Using real-time BMI analysis and health objective tracking, it provides personalized food recommendations, a 7-day meal planner, and a seamless ordering experience.
 
+Website Link - https://nutri-smart-eat-smart-live-better-k-seven.vercel.app/
+
 ## ✨ Key Features
 
 ### 🧬 Smart Health Profiling
