@@ -94,5 +94,5 @@ npm start
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
-**Developed with ❤️ by Kartik**
+**Developed with ❤️ by Ayush Tiwari**
 *NutriSmart – Eat Smart, Live Better*
